@@ -1,0 +1,412 @@
+\documentclass{article}
+
+% --- Packages ---
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{mathrsfs} % for \mathscr
+\usepackage{tikz} % Keep if figures are used
+\usepackage{float} % for using [H] specifier
+\usepackage{algorithm}
+\usepackage{algpseudocode} % Use this instead of pseudocode if preferred
+\usepackage{multirow}
+\usepackage{subcaption} % Keep if subfigures are used
+% \usepackage{courier} % Removed unless specifically needed for code style
+% \usepackage{listings} % Removed unless specifically needed for code listings
+
+% --- Hyperref Setup ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black, % Consider blue or another color for web links
+    filecolor=black,
+    urlcolor=black, % Consider blue or another color for web links
+    citecolor=black, % Consider blue or green for citations
+    pdfborder={0 0 0}
+}
+
+% --- Geometry ---
+\geometry{
+    a4paper,
+    left=25mm, % Slightly wider margins for readability
+    right=25mm,
+    top=30mm,
+    bottom=30mm,
+}
+
+% --- Theorem Environments ---
+\newtheorem*{note}{Note}
+\newtheorem{theorem}{Theorem}[section] % Number theorems within sections
+\newtheorem{definition}{Definition}[section] % Number definitions within sections
+\newtheorem{prop}{Property}[section] % Number properties within sections
+\newtheorem{remark}{Remark}[section] % Number remarks within sections
+\newtheorem{corollary}{Corollary}[theorem] % Corollaries numbered based on theorem
+
+% --- Math Operators ---
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min} % Added argmin
+\DeclareMathOperator*{\maximize}{maximize}
+\DeclareMathOperator*{\minimize}{minimize} % Added minimize
+
+% --- Document ---
+\begin{document}
+
+\title{The Rational Speech Act as a Schrödinger Bridge: A Mathematical Grounding}
+\author{B. PLUS} % Keep your name
+\date{\today} % Use current date or remove for submission version
+\maketitle
+
+% --- Abstract ---
+\begin{abstract}
+The Rational Speech Act (RSA) framework offers a compelling computational model of pragmatic reasoning, capturing human-like inferences through iterative speaker-listener dynamics. Despite its empirical success, the precise mathematical optimization problem solved by the iterative RSA algorithm has remained elusive, with prior formulations often overlooking the crucial role of the initial lexicon. This paper establishes a formal equivalence between the iterative RSA algorithm (with temperature $\alpha=1$) and the Sinkhorn-Knopp (SK) algorithm. This equivalence reveals that RSA implicitly solves a specific Schrödinger problem instance determined by the initial lexicon and prior distributions. We analyze the conditions for the existence, uniqueness (scalability), and convergence of the associated Schrödinger problem solution via the RSA/SK iterations. Furthermore, we examine the algorithm's behavior in non-scalable scenarios, connecting its limit matrices to a relaxed version of the Schrödinger problem. This work provides a rigorous mathematical foundation for RSA, linking it to the rich theories of optimal transport and statistical physics, thereby clarifying its computational properties and opening avenues for future theoretical development.
+\end{abstract}
+
+% --- Introduction ---
+\section{Introduction}
+\paragraph{Context} Understanding human communication requires moving beyond literal semantics to grasp the nuances of pragmatics, where context and inference shape meaning \cite{grice_logic_1975}. The Rational Speech Act (RSA) framework \cite{frank_predicting_2012} provides a powerful computational lens for this, modeling speakers and listeners as rational agents reasoning iteratively about each other's mental states. This iterative process, starting from a literal interpretation and progressively refining pragmatic understanding, has successfully captured diverse linguistic phenomena \cite{goodman_pragmatic_2016, degen_rational_2023}. The relevance of studying these iterations is underscored by findings showing improved performance and closer alignment with cooperative communication principles as the recursion depth increases, especially in complex scenarios \cite{wang2020mathematicaltheorycooperativecommunication}.
+
+\paragraph{Lack of mathematical grounding} Despite its empirical validation, a clear mathematical characterization of the objective function optimized by the iterative RSA algorithm has been lacking. Previous attempts to frame RSA within information theory, such as the rate-distortion perspective \cite{zaslavsky_rate-distortion_2020}, have faced limitations. Notably, these formulations often fail to incorporate the initial lexicon matrix, a cornerstone of RSA defining the semantic grounding, and lack rigorous justification for the optimization methods employed (e.g., alternate maximization's convergence criteria \cite{Csiszar_1984} may not hold). This omission can lead to ambiguity, as the optimization problem without the lexicon constraint may admit multiple solutions inconsistent with the unique outcome produced by the RSA algorithm.
+
+\paragraph{Aim of this paper} This paper aims to fill this theoretical gap. We demonstrate that the iterative RSA algorithm, specifically for the commonly used temperature parameter $\alpha=1$, is mathematically equivalent to the well-established Sinkhorn-Knopp (SK) algorithm for matrix scaling \cite{Sinkhorn1967DiagonalET}. The SK algorithm is known to solve the entropic optimal transport problem, which is equivalent to the Schrödinger bridging problem \cite{léonard2013surveyschrodingerproblemconnections}. By establishing this RSA-SK equivalence, we show that the iterative RSA process implicitly seeks the solution to a specific Schrödinger problem instance. This connection allows us to leverage the extensive literature on optimal transport and Schrödinger bridges to rigorously analyze RSA's convergence properties, including conditions for the existence and uniqueness of its solution (scalability) based on the initial lexicon and priors. We also investigate the algorithm's behavior in non-scalable cases, linking its output to a relaxed Schrödinger problem formulation \cite{baradat2023convergencesinkhornalgorithmschrodinger}. This mathematical grounding provides a deeper understanding of RSA's computational underpinnings and opens new pathways for its analysis and extension.
+
+\paragraph{Main result} We explicit the closes relations between RSA and the well-studied Sinkhorn Algorithm \ref{fig:alg-comparison}, unlocking the rich literature of Optimal Transport and Schrödinger problem. Main result include Theorem \ref{th:RSA_solves_SB} which cite that RSA Algorithm solves one (or two depending of convergence setup) Schrödinger problems defined in \ref{def:schro}. It also include convergence analysis and geometrical interpretation (Figure \ref{fig:three-tikz}) of different convergence setups. 
+
+% --- The RSA Algorithm ---
+\section{The Rational Speech Act Algorithm}
+The RSA framework is first introduced in \cite{monroe_learning_2015}. This algorithm models communication between a Speaker ($S$) and a Listener ($L$) over a set of possible meanings $\mathcal{M}$ and utterances $\mathcal{U}$. We assume finite sets $\mathcal{M}$ and $\mathcal{U}$ with cardinalities $M$ and $U$ respectively. Key components include:
+\begin{itemize}
+    \item \textbf{Prior $P(m)$:} A probability distribution over meanings $m \in \mathcal{M}$.
+    \item \textbf{Lexicon $R\in [0,1]^{\mathcal{U}\times \mathcal{M}}$:} A matrix  $[0,1]^{\mathcal{U}\times \mathcal{M}}$ representing the literal semantic compatibility between utterance $u$ and meaning $m$. Often treated as $\{0,1\}$, we allow intermediate values \cite{bergen_pragmatic_2016}. A $0$ in the matrix indicates that the utterance can not be described by the meaning
+    \item \textbf{Cost $C(u)$:} The cost associated with producing utterance $u$.
+    \item \textbf{Listener $L(m|u) \in [0,1]^{\mathcal{U}\times \mathcal{M}}$:} Probability distribution over $\mathcal{M}$ given $u$; the listener's interpretation.
+    \item \textbf{Speaker $S(u|m) \in [0,1]^{\mathcal{U}\times \mathcal{M}}$:} Probability distribution over $\mathcal{U}$ given $m$; the speaker's production choice.
+\end{itemize}
+
+The RSA algorithm proceeds iteratively (Algorithm \ref{algo:RSA}):
+
+\begin{algorithm}[H]\caption{Rational Speech Act (Iterative)}\label{algo:RSA}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} Prior $P(m)$, Lexicon $R$, Cost $C(u)$, temperature $\alpha$.
+    \State \textbf{Initialization (Literal Listener $L_0$):}
+        \begin{equation}\label{eq:litteral_listener}
+            L_0(m|u) \propto P(m) \cdot R_{u,m}
+        \end{equation}
+    \State \textbf{Iteration (for $n \ge 0$):}
+    \State \quad \textbf{Pragmatic Speaker $S_{n+1}$:}
+        \begin{equation}\label{eq:pragmatic_speaker}
+            S_{n+1}(u|m)\propto \exp(\alpha \cdot (\log(L_n(m|u)) - C(u)))
+        \end{equation}
+    \State \quad \textbf{Pragmatic Listener $L_{n+1}$:}
+        \begin{equation}\label{eq:pragmatic_listener}
+            L_{n+1}(m|u) \propto P(m) \cdot S_{n+1}(u|m)
+        \end{equation}
+    \State \textbf{Output:} Converged Speaker $S^*$ and Listener $L^*$.
+    \end{algorithmic}
+\end{algorithm}
+
+The temperature parameter $\alpha$ controls the speaker's rationality. A high value of $\alpha$ leads to speaker choices that are nearly deterministic and maximize utility, while a low value results in choices closer to random (maximizing entropy). Empirical studies often find that $\alpha=1$ provides a good fit to human behavior \cite{frank_rational_2016}. For simplicity and due to its empirical relevance, \textbf{we focus on the case $\alpha=1$ and assume $C(u)=0$ for all $u$} in the following analysis, unless explicitly stated otherwise. The main results can be extended to non-zero costs by incorporating the term $e^{-\alpha C(u)}$ into the initial lexicon or matrix representation.
+
+% --- Equivalence of RSA and Sinkhorn-Knopp ---
+\section{The Sinkhorn-Knopp Algorithm}
+
+
+\begin{remark}
+We consider in this paper the case $\alpha=1$ in formula \ref*{eq:pragmatic_speaker}. It has been shown that RSA more accurately models human behavior when $\alpha=1$, which can also be viewed as a limiting case. When $\alpha>1$, RSA tends to favor highly deterministic distributions (if $U=M$ and $R$ is diagonalizable, RSA will converge toward a full rank matrix). Conversely, when $\alpha<1$, RSA favors more uniform distributions, approaching a uniform distribution where possible.
+\end{remark}
+
+The Sinkhorn-Knopp Algorithm (Algorithm \ref*{alg:SK}) is an iterative method that involves the repeated normalization of rows and columns of a given matrix $R$. As illustrated in Figure \ref*{fig:alg-comparison}, it bears a strong resemblance to the RSA Algorithm (Algorithm \ref*{alg:RSA}).
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[t]{0.45\textwidth}
+        \begin{algorithm}[H]
+        \caption{SK Method}  \label{alg:SK}
+        \begin{algorithmic}[1]
+            \State \textbf{Given:} Initial matrix $R \in \mathbb{R}^{U \times M}_{+}$
+            \State $Q \gets R$
+            \Repeat
+                \State \(\forall i,j\quad P_{ij} \gets \frac{\mu_j Q_{ij}}{\sum_iQ_{ij}}\)
+                \State \(\forall i,j\quad Q_{ij} \gets \frac{\nu_jP_{ij}}{\sum_jP_{ij}}\)
+            \Until{convergence}
+        \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.45\textwidth}
+        \begin{algorithm}[H]
+        \caption{RSA Algorithm}  \label{alg:RSA}
+        \begin{algorithmic}[1]
+            \State \textbf{Given:} Initial matrix $R \in \mathbb{R}^{U \times M}_{+}$
+            \State $L \gets R$
+            \Repeat
+                \State \(\forall i,j\quad S_{ij} \gets \frac{L_{ij}}{\sum_i L_{ij}}\)
+                \State \(\forall i,j\quad L_{ij} \gets \frac{P(m_j) S_{ij}}{\sum_j P(m_j) S_{ij}}\)
+            \Until{convergence}
+        \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{Comparison of the SK Method and RSA Algorithm}
+    \label{fig:alg-comparison}
+\end{figure}
+
+
+\paragraph{Links between Optimal Transport and RSA algorithm} The Sinkhorn method \ref{alg:SK} is commonly employed to compute the solution of the \textit{Entropic Optimal Transport} problem under specific conditions, as introduced in \cite{cuturi2013sinkhorndistanceslightspeedcomputation}. Entropic Optimal Transport is also called \textit{Schrödinger Bridging problem} \cite{gushchin2023buildingbridgeschrodingercontinuous} \cite{léonard2013surveyschrodingerproblemconnections}. We will use this formulation for the rest of the paper. But it should be kept in mind that there exists a formulation of Schrödinger Problem \ref{def:schro} as an Entropic Optimal Transport Porblem. 
+ 
+ Given the notable similarity between the RSA and SK algorithms, and the fact that SK solves the Schrödinger bridging problem, we investigate a formulation of RSA as a Schrödinger problem, which is detailed in Section \ref*{sec:RSA_Sch}. This formulation allows us to draw upon the extensive literature on both Schrödinger problems and Optimal Transport to analyze the Rational Speech Act framework. Optimal transport is a well-established problem that has been studied across various fields for a considerable time. The problem addressed by matrix scaling algorithms has acquired several names and has been investigated independently in different domains. For a review of the various formulations of the Entropic Optimal Transport problem, we refer the reader to \cite{idel2016reviewmatrixscalingsinkhorns}.
+
+% --- The Schrödinger Problem ---
+\section{The Schrödinger Bridging Problem}
+The Sinkhorn-Knopp algorithm is known to solve the entropic optimal transport problem, also known as the \textit{Schrödinger bridging problem} \cite{léonard2013surveyschrodingerproblemconnections, gushchin2023buildingbridgeschrodingercontinuous}. This problem seeks a joint distribution (or matrix) $\bar{R}$ that matches given marginal distributions $\mu$ and $\nu$, while being "closest" to a reference distribution (or matrix) $R$ in terms of relative entropy (Kullback-Leibler divergence).
+
+We denote $\Pi(\mu, \nu)$ as the subset of $\mathbb{R}^{U \times M}_{+}$ consisting of all matrices $\bar{R}$ whose row and column sums match $\mu$ and $\nu$ respectively. Formally, this means:
+$$
+\forall i=1, \ldots, U, \quad \sum_j \bar{R}_{i j}=\mu_i, \quad \text { and } \quad \forall j=1, \ldots M, \quad \sum_i \bar{R}_{i j}=\nu_j \text {. }
+$$
+In the Schrödinger problem \ref{def:schro} (or equivalently in Entropic Optimal Transport), the goal is to find a matrix $\bar R$ that is "close" to $R$ subject to marginal constraints. To quantify this "closeness," we define the \textit{relative entropy} (also known as \textit{Kullback-Leibler divergence} or \textit{I-projection}) as $
+H(\bar{R} \mid R):=\sum_{i j}\left\{\bar{R}_{i j} \log \frac{\bar{R}_{i j}}{R_{i j}}+R_{i j}-\bar{R}_{i j}\right\}
+$.
+
+\begin{remark}
+    The definition of relative entropy does not typically include the terms $R_{ij}-\bar{R}_{ij}$. However, we make no assumptions about $R$ being a probability matrix, this additional term allow for non propbability matrices. We also adopt the conventions $a \log \frac{a}{0}=+\infty$ if $a>0$, and $0 \log 0=0 \log \frac{0}{0}=0$.
+\end{remark}
+
+The Schrödinger problem is formally stated as follows:
+
+\begin{definition}[Schrödinger Problem] \label{def:schro}
+Let $R\in\mathbb{R}^{U \times M}_{+}$ and $(\mu,\nu) \in \mathbb{R}^{U}_{+} \times \mathbb{R}^{M}_{+}$. We define the Schrödinger problem with respect to $R$ between $\mu$ and $\nu$ as the optimization problem of minimizing the relative entropy among all matrices $\bar R \in \Pi(\mu, \nu)$:
+\begin{equation}
+\operatorname{Sch}(R ; \mu, \nu):=\min_{\bar R}  H(\bar{R} \mid R) \text{ s.t } \bar{R} \in \Pi(\mu, \nu)
+\end{equation}
+\end{definition}
+
+
+
+Since the relative entropy is strictly convex with respect to $\bar R$, if the Schrödinger problem has a solution $R^*$, this solution is unique. Furthermore, as $\Pi(\mu, \nu)$ is a compact set, the Schrödinger problem has a solution if and only if there exists a matrix $\bar R \in \Pi(\mu, \nu)$ such that $H(\bar R \mid R)<+\infty$.
+\begin{theorem}
+    If the Schrödinger problem $\operatorname{Sch}(R ; \mu, \nu)$ admits a solution, then this solution is unique, and the Sinkhorn matrices defined in algorithm \ref{alg:SK} converges towards it:
+    \begin{equation}
+        P^n \underset{n \rightarrow+\infty}{\longrightarrow} P^* \quad \text { and } \quad Q^n \underset{n \rightarrow+\infty}{\longrightarrow} Q^*
+    \end{equation}
+    Where $P^*=Q^*=R^*=\arg \operatorname{Sch}(R ; \mu, \nu)$.
+\end{theorem}
+\textit{Proof.} See \cite{pjm/1102992505} \cite{6770983} \cite{Sinkhorn1967DiagonalET} or \cite{idel2016reviewmatrixscalingsinkhorns} theorem 4.1.
+
+\textit{Exemple.} To illustrate the connection between the Schrödinger problem and RSA - detailed in next section \ref{sec:RSA_Sch} - consider the following example: when the lexicon $R$ is a strictly positive square matrix and the marginals are $(\mu,\nu)=(\mathbf{1}_U,\mathbf{1}_M)$ satisfying $\sum_{ij} R_{ij}=\sum_i \mu_i=\sum_j \nu_j$, then the problem $\operatorname{Sch}(R ; \mathbf{1}_U, \mathbf{1}_U)$ defined by Definition \ref{def:schro} has a unique solution. In this case, RSA converges towards a single doubly stochastic matrix $L^*=S^*=R^*$ which is the solution of $\operatorname{Sch}(R ; \mathbf{1}_U, \mathbf{1}_U)$.\footnote{Sinkhorn proved in \cite{10.1214/aoms/1177703591} that for a strictly positive square matrix $R$, there corresponds a unique doubly stochastic matrix. The sequences of matrices generated by Algorithm \ref{alg:SK} with $\mu=\mathbf{1}_U$ and $\nu=\mathbf{1}_M$ converge towards this doubly stochastic matrix.} \\
+
+\section{Convergence of Sinkhorn-Knopp / RSA}
+
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \scalebox{0.5}{\input{tikz_figures/fig/SK_R_uni}}  % Scale down the first figure
+        \caption{Uniform prior and $U=M$}
+        \label{fig:subfig1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \scalebox{0.5}{\input{tikz_figures/fig/SK_PQ_uni}}  % Scale down the second figure
+        \caption{Uniform prior and $U\neq M$}
+        \label{fig:subfig2}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \scalebox{0.5}{\input{tikz_figures/fig/SK_PQ_prior}}  % Scale down the third figure
+        \caption{Non uniform priors and $U\neq M$}
+        \label{fig:subfig3}
+    \end{subfigure}
+    \caption{RSA convergence in different settings. $R$ is the initial lexicon matrix, $L$ and $S$ are listener and speaker matrices, $P$ and $Q$ notations are used to differenciate the matrices from SK algorithm \ref{alg:SK} and not RSA}
+    \label{fig:three-tikz}
+\end{figure}
+
+When the conditions outlined in Theorem \ref{th:scalable} are not met, the problem $\operatorname{Sch}(R ; \mu, \nu)$ is considered non-scalable. This means that no matrix $\bar{R}$ exists that can simultaneously satisfy the exact marginal constraints $\mu, \nu$ and have a finite relative entropy $H(\bar{R} \mid R)$. However, as demonstrated by Theorem \ref{th:convergence}, the RSA/SK algorithm still converges to limits $P^* = \arg \operatorname{Sch}(R ; \mu, \nu^*)$ and $Q^* = \arg \operatorname{Sch}(R ; \mu^*, \nu)$. The marginals $\mu^*$ and $\nu^*$ in this context represent the "closest" achievable marginal distributions to $\mu$ and $\nu$ respectively, given the constraints imposed by the matrix $R$.
+
+\begin{equation}\label{eq:mu_nu}
+\begin{aligned}
+& \mu^*:=\arg \min \left\{H(\bar{\mu} \mid \mu) \mid \bar{\mu}=\mu^Q \text { for some } Q \text { with } H(Q \mid R)<+\infty \text { and } \nu^Q=\nu\right\}, \\
+& \nu^*:=\arg \min \left\{H(\bar{\nu} \mid \nu) \mid \bar{\nu}=\nu^P \text { for some } P \text { with } H(P \mid R)<+\infty \text { and } \mu^P=\mu\right\} .
+\end{aligned}
+\end{equation}
+
+These marginals are intrinsically linked to the problem $\operatorname{Sch}(R ; \mu, \nu)$ and are dependent on $R$, $\mu$, and $\nu$.
+
+\begin{theorem} \label{th:convergence}
+Let $R \in M_{+}(\mathcal{U} \times \mathcal{M}), \mu \in M_{+}(\mathcal{U})$, $\nu \in M_{+}(\mathcal{M})$, and consider the sequences $\left(P^n\right)_{n \in \mathbb{N}^*}$ and $\left(Q^n\right)_{n \in \mathbb{N}^*}$ generated by Algorithm \ref{alg:SK}. If the conditions $H(\mu \mid \mu^R)<\infty $ and $H(\nu \mid \nu^R) < \infty$ are met, then (Th.11 of \cite{baradat2023convergencesinkhornalgorithmschrodinger})
+$$
+P^n \underset{n \rightarrow+\infty}{\longrightarrow} P^* \quad \text { and } \quad Q^n \underset{n \rightarrow+\infty}{\longrightarrow} Q^* \text {. }
+$$
+Here, $\mu^*$ and $\nu^*$ are defined by Equations \ref{eq:mu_nu}. Furthermore,
+\begin{equation}\label{eq:SK_PQ}
+P^*:=\arg \operatorname{Sch}(R ; \mu, \nu^*) \quad \text { and } \quad Q^*:=\arg \operatorname{Sch}(R ; \mu^*, \nu)
+\end{equation}
+\end{theorem}
+
+In other words, if the Sinkhorn algorithm converges, it solves two distinct Schrödinger problems defined by Equations \ref{eq:SK_PQ}. To identify the specific Schrödinger problem associated with a given triple $(R,\mu,\nu)$, one must first determine $\mu^*$ and $\nu^*$ by solving the convex optimization problems in Equations \ref{eq:mu_nu}. The problem solved by the Sinkhorn algorithm is then given by Equations \ref{eq:SK_PQ}.
+\begin{remark}
+    The conditions $H(\mu \mid \mu^R)<\infty $ and $H(\nu \mid \nu^R) < \infty$ are equivalent to stating that if a row sum $\mu_i^R$ is zero, the corresponding marginal $\mu_i$ must also be zero, and similarly for column sums $\nu_j^R$ and marginals $\nu_j$.
+\end{remark}
+\begin{remark}
+    Since Equations \ref{eq:mu_nu} represent convex optimization problems, $\mu^*$ and $\nu^*$ exist if and only if there exists a matrix $Q$ (respectively, $P$) such that $H(Q \mid R)<+\infty$ and $\nu^Q=\nu$ (respectively, $H(P \mid R)<+\infty$ and $\mu^P=\mu$). If such a solution exists, it is unique.
+\end{remark}
+\begin{remark}
+If the problem $\operatorname{Sch}(R ; \mu, \nu)$ is \textit{scalable} (i.e., the conditions of Theorem \ref{th:scalable} are satisfied), then $\mu^*=\mu$ and $\nu^*=\nu$, and the Sinkhorn algorithm converges towards the unique solution.
+\end{remark}
+
+\paragraph{Relaxed problem}
+Instead of defining two related relaxed problems as presented in Theorem \ref{th:convergence}, an alternative perspective involves considering a single \textit{relaxed} Schrödinger problem where the marginal constraints are softened by a small element $\epsilon$ \cite{baradat2023convergencesinkhornalgorithmschrodinger}. This is explicitly detailed in Appendix \ref{sec:relax}.
+
+\section{RSA as a Schrödinger problem}\label{sec:RSA_Sch}
+
+\paragraph*{Notations} \label{notation}
+We denote $\mathcal{U}$ as the set of utterances and $\mathcal{M}$ as the set of meanings, with cardinalities $U$ and $M$ respectively. $R \in \mathbb{R}^{U \times M}_{+}$ represents a lexicon, and $\mu \in \mathbb{R}^{U}_{+}$ and $\nu \in \mathbb{R}^{M}_{+}$ represent prior knowledge on utterances and meanings, referred to as \textit{marginals}. A matrix $R$ is said to be \textit{scalable} with respect to $\mu$ and $\nu$ if the Schrödinger problem $\operatorname{Sch}(R ; \mu, \nu)$ defined by Definition \ref*{def:schro} has a solution. \\
+
+Appendix \ref{sec:diff_SK_RSA} provides detailed steps on how to transition from the RSA algorithm to the SK algorithm.
+
+% \begin{prop}[Corollary 6 of \cite{baradat2023convergencesinkhornalgorithmschrodinger}] \label{prop:cor6}
+%     Given $R \in M_{+}(\mathcal{U} \times \mathcal{M})$ and $\mu \in M_+(\mathcal{U})$, the problem
+%     $$
+%     \min \left\{H(P \mid R) \mid \mu^P=\mu\right\}
+%     $$
+%     admits a solution if and only if $H\left(\mu \mid \mu^R\right)<+\infty$. This solution $P$ is unique and satisfies $P_{i j}=\frac{\mu_i}{\mu_i^R} R_{i j}$.\\
+%     The same way for $\nu \in M_+(\mathcal{M})$ the problem $\min \left\{H(Q \mid R) \mid \nu^Q=\nu\right\}$ admits a unique solution $Q$ satisfaying $Q_{i j}=\frac{\nu_j}{\nu_j^R} R_{i j}$ if and only if $H\left(\nu \mid \nu^R\right)<+\infty$
+% \end{prop}
+
+
+\begin{theorem}\label{th:RSA_solves_SB}
+    Let $R \in \mathbb{R}_{+}^{\mathcal{U} \times \mathcal{M}}, \mu = \mathbf{P}_U$ and $\nu = \mathbf{P}_M$ defining the base lexicon and prior knowledge in classic RSA. If $H(\mu \mid \mu^R)<\infty $ and $H(\nu \mid \nu^R) < \infty$, the sequences $\left(S^n\right)_{n \in \mathbb{N}^*}$ and $\left(L^n\right)_{n \in \mathbb{N}^*}$ generated by RSA Algorithm \ref{alg:RSA_clean} satisfy:
+    $$
+    S^n \underset{n \rightarrow+\infty}{\longrightarrow} S^* \quad \text { and } \quad L^n \underset{n \rightarrow+\infty}{\longrightarrow} L^*
+    $$
+    Where $S_{ij}^* = \frac{1}{\nu_j}P_{ij}^*$ and $L_{ij}^* = \frac{1}{\mu_i}Q_{ij}^*$, with $\mu^*$ and $\nu^*$ defined by Equations \ref{eq:mu_nu}, and
+    \begin{equation}\label{eq:SK_PQ}
+        P^*:=\arg \operatorname{Sch}(R ; \mu, \nu^*) \quad \text { and } \quad Q^*:=\arg \operatorname{Sch}(R ; \mu^*, \nu)
+    \end{equation}
+\end{theorem}
+
+In essence, the RSA Algorithm yields the normalized matrices obtained when solving the Schrödinger problem with relaxed marginals.
+
+\begin{remark}
+    If the problem is scalable, then the relaxed marginals are equal to the intial priors $\mu^* = \mu = \mathbf{P}_U$ and $\nu^* = \nu = \mathbf{P}_M$. If, in addition, the priors are uniform, the normalization step can be omitted. If we further add the condition $U=M$, RSA directly solves $\operatorname{Sch}(R ; \mathbf{1}_U, \mathbf{1}_U)$.
+\end{remark}
+
+\textit{Proof}: The proof is a direct application of Theorem \ref{th:convergence}. Lines 1 to 6 of RSA Algorithm \ref{alg:RSA_clean} are equivalent to the Sinkhorn algorithm. By applying Theorem \ref{th:convergence} to the triple $(R,\mu,\nu)$, we obtain $P^*$ and $Q^*$. The lines 7-8 of RSA Algorithm \ref{alg:RSA_clean} is a normalization step. Since matrices $P^*$ and $Q^*$ are already normalized up to factors $\mu_i$ and $\nu_j$ respectively, we divide by these factors to obtain $S^*$ and $L^*$.
+
+% --- Convergence Analysis ---
+
+\section{Scalability : Existence and Uniqueness}
+
+The convergence of the RSA algorithm, through its established equivalence to SK, is contingent upon the properties of the initial lexicon $R$ and the target marginals $\mu=\mathbf{P}_U, \nu=\mathbf{P}_M$.
+
+The existence and uniqueness of a solution to the Schrödinger problem $\operatorname{Sch}(R ; \mu, \nu)$ is referred to as \textit{scalability}. The conditions for scalability are provided by the following theorem, which links the marginal distributions to the support of the matrix $R$. We define the support sets as:
+\[
+\begin{array}{rcl}
+\forall A \subseteq \mathcal{U}, & M_R(A) &:=\{m \in \mathcal{M} \mid \exists u \in A \text { s.t. } R_{um}>0\}, \\
+\forall B \subseteq \mathcal{M}, & U_R(B) &:=\{u \in \mathcal{U} \mid \exists m \in B \text { s.t. } R_{um}>0\} .
+\end{array}
+\]
+Let $M(\mu) = \sum_u \mu_u$ and $M(\nu) = \sum_m \nu_m$ be the total masses. Let $\mu(A) = \sum_{u \in A} \mu_u$ and $\nu(B) = \sum_{m \in B} \nu_m$.
+
+\begin{theorem}[Scalability Conditions, Th. 23 of \cite{baradat2023convergencesinkhornalgorithmschrodinger}]\label{th:scalable}
+Let $R \in M_{+}(\mathcal{U} \times \mathcal{M}), \mu \in M_{+}(\mathcal{U})$ and $\nu \in M_{+}(\mathcal{M})$. The following conditions are equivalent:
+\begin{enumerate}
+\item $M(\mu)=M(\nu)$ and for all $A \subseteq \mathcal{U}, \mu(A) \leq \nu\left(M_R(A)\right)$.
+\item $M(\mu)=M(\nu)$ and for all $B \subseteq \mathcal{M}, \nu(B) \leq \mu\left(U_R(B)\right)$.
+\item The Schrödinger problem $\operatorname{Sch}(R ; \mu, \nu)$ is scalable (i.e., admits a unique solution $R^* \in \Pi(\mu, \nu)$).
+\end{enumerate}
+\end{theorem}
+Condition 1 intuitively states that the total mass required by any subset of rows $A$ must not exceed the total mass available in the columns $M_R(A)$ that are connected to these rows through non-zero entries in $R$. Condition 2 is the analogous statement for columns. When these conditions are satisfied (and the total masses are equal), the SK algorithm converges to the unique solution $R^*$.
+
+
+
+% --- Conclusion ---
+\section{Conclusion}
+This paper provides a rigorous mathematical foundation for the iterative Rational Speech Act framework by establishing its equivalence (for $\alpha=1, C=0$) with the Sinkhorn-Knopp algorithm. This connection reveals that RSA implicitly solves an entropic optimal transport, or Schrödinger bridging, problem. The specific instance of the Schrödinger problem is determined by the initial lexicon $R$ (serving as the reference matrix $R$) and the prior distributions over utterances $\mathbf{P}_U$ and meanings $\mathbf{P}_M$ (acting as the target marginals $\mu$ and $\nu$).
+
+This perspective addresses key limitations of previous theoretical accounts by explicitly incorporating the lexicon and leveraging the well-understood convergence properties of the SK algorithm. We have demonstrated that RSA/SK converges under general conditions. If the problem defined by $(R, \mathbf{P}_U, \mathbf{P}_M)$ is scalable (satisfying the conditions of Theorem \ref{th:scalable}), the algorithm converges to the unique solution of $\operatorname{Sch}(R; \mathbf{P}_U, \mathbf{P}_M)$. In non-scalable cases, it still converges to well-defined limits $P^*$ and $Q^*$ that solve related Schrödinger problems with adjusted marginals $\mu^*$ and $\nu^*$. These limits are also connected to a relaxed formulation of the problem.
+
+Grounding RSA in the theory of optimal transport and Schrödinger bridges offers several significant advantages:
+\begin{itemize}
+    \item \textbf{Clarity:} It provides a clear objective function (minimizing relative entropy $H(\cdot | R)$ under marginal constraints) that the RSA algorithm optimizes.
+    \item \textbf{Analysis:} It allows leveraging established mathematical tools to analyze convergence, uniqueness, and stability properties.
+    \item \textbf{Extension:} It suggests principled ways to extend the RSA framework, for instance, by incorporating different cost functions within the optimal transport formulation or exploring connections to related probabilistic models.
+\end{itemize}
+This work clarifies the computational nature of RSA, solidifying its theoretical underpinnings and paving the way for deeper analysis and future development of pragmatic language models.
+
+% --- References ---
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{section}{References} % Add References to ToC if using ToC
+\bibliographystyle{apalike} % Or another suitable style
+\bibliography{references} % Ensure references.bib file is available
+
+% --- Appendix ---
+\cleardoublepage % Use if needed
+\phantomsection
+\appendix
+\addcontentsline{toc}{section}{Appendix} % Add Appendix to ToC if using ToC
+\section*{Appendix} % Use section* for unnumbered appendix heading
+\begin{center}
+    {\LARGE \textbf{Appendix}} \\ % Alternative formatting
+    \vspace{1cm}
+    {\large Proofs and Demonstrations}
+\end{center}
+% Include appendix content here
+
+\section{Differences between RSA and Sinkhorn} \label{sec:diff_SK_RSA}
+
+As depicted in Figure \ref{fig:alg-comparison}, the Rational Speech Act algorithm and the Sinkhorn algorithm share a strong resemblance, although they are not identical. If we denote $\mathbf{P}_U$ and $\mathbf{P}_M$ as the priors on utterances and meanings, the RSA algorithm can be expressed as follows:
+
+\begin{algorithm}[H]
+    \caption{RSA Algorithm}  \label{alg:RSA_clean}
+    \begin{algorithmic}[1]
+        \State \textbf{Given:} $R \in \mathbb{R}^{U \times M}_{+}, \mu = \mathbf{P}_U, \nu = \mathbf{P}_M$
+        \State $L \gets R$
+        \For{$k = 1$ \textbf{to} $n$}
+            \State \( \bar P_{ij}^k \gets \frac{\nu_j \bar Q_{ij}^k}{\sum_i \bar Q_{ij}^k}\)
+            \State \( \bar Q_{ij}^k \gets \frac{\mu_i \bar P_{ij}^k}{\sum_j \bar P_{ij}^k}\)
+        \EndFor
+        \State $S_{ij}^n \gets \frac{\bar P_{ij}^n}{\sum_i \bar P_{ij}^n}$
+        \State $L_{ij}^n \gets \frac{\bar Q_{ij}^n}{\sum_j \bar Q_{ij}^n}$
+    \end{algorithmic}
+\end{algorithm}
+
+    \begin{remark}
+        \begin{itemize}
+        \item We have introduced prior knowledge on utterances ($\mu$), which is not typically used in the standard RSA framework. If this is not desired, setting $\mu = \frac{1}{U} \mathbf{1}_U$ (a uniform prior) will recover the classic RSA formulation, simplifying the $\mu_i$ term in line 7.
+        \item Lines 1 to 6 precisely correspond to the Sinkhorn algorithm \ref*{alg:SK} with marginals $\mu = \mathbf{P}_U$ and $\nu = \mathbf{P}_M$.
+        \item The final line represents a normalization step, projecting the matrices onto the probability space to obtain probability vectors.
+        \item Although we have chosen $\mu$ and $\nu$ to be probability vectors, the properties hold for any positive vectors.
+        \end{itemize}
+    \end{remark}
+
+    The RSA algorithm essentially consists of alternating projections of the lexicon matrix $R$ to align with the prior knowledge on utterances and meanings. At the end of the iterations (line 7), the resulting matrices are projected onto probability spaces to yield the final probability vectors.
+
+\section{Relaxed problem}\label{sec:relax}
+
+
+An alternative approach to studying \textit{non-scalable} problems involves considering a \textit{relaxed} Schrödinger problem where the marginal constraints are loosened \cite{baradat2023convergencesinkhornalgorithmschrodinger}. This approach is explicitly detailed in this appendix section. For a given $\varepsilon > 0$, the relaxed problem is defined as:
+\begin{equation}\label{eq:unbalanced}
+    \operatorname{Sch}^{\varepsilon}(R ; \mu, \nu):=\min_{\bar{R} \in M_{+}(\mathcal{U} \times \mathcal{M})} \left\{\varepsilon H(\bar{R} \mid R)+H\left(\mu^{\bar{R}} \mid \mu\right)+H\left(\nu^{\bar{R}} \mid \nu\right) \right\}
+\end{equation}
+In this formulation, deviations from the target marginals $\mu$ and $\nu$ are penalized using relative entropy terms, weighted by $\varepsilon$ against the primary objective $H(\bar{R} \mid R)$. Let $R_\varepsilon^*$ denote the unique solution to this relaxed problem.
+
+The limit of the solution to the relaxed problem as $\varepsilon \to 0$ is connected to the matrices $P^*$ and $Q^*$ obtained from the standard SK algorithm.
+
+\begin{theorem}[Limit of Relaxed Problem, Th. 17 of \cite{baradat2023convergencesinkhornalgorithmschrodinger}]
+    Let $R, \mu, \nu$ satisfy the convergence conditions $H(\mu \mid \mu^R)<\infty$ and $H(\nu \mid \nu^R)<\infty$. Let $P^*$ and $Q^*$ be the limits of the SK algorithm (as defined in Theorem \ref{th:convergence}). Let $R_\varepsilon^*$ be the solution of the relaxed problem given by Eq. \ref{eq:unbalanced}. Then:
+    \begin{equation}
+        R_\varepsilon^* \underset{\varepsilon \to 0}{\longrightarrow} R^* := \left(\sqrt{P^*_{um} Q^*_{um}}\right)_{u,m}
+    \end{equation}
+    This means the limit $R^*$ is the element-wise geometric mean of $P^*$ and $Q^*$. Furthermore, this limit $R^*$ is the unique solution to the Schrödinger problem with geometrically averaged balanced marginals:
+    $$ R^* = \arg \operatorname{Sch}(R ; \sqrt{\mu^* \mu}, \sqrt{\nu^* \nu}) $$
+    where the square roots are taken element-wise, and $\mu^*, \nu^*$ are the balanced marginals derived from Eq. \ref{eq:mu_nu}.
+\end{theorem}
+
+Fundamentally, even in cases where the problem is non-scalable, the RSA/SK algorithm converges to meaningful limits $P^*$ and $Q^*$. These limits solve Schrödinger problems with adjusted marginals $(\mu, \nu^*)$ and $(\mu^*, \nu)$, respectively. The geometric mean of these limits provides the solution to a Schrödinger problem with averaged marginals and represents the target of the relaxed formulation as the relaxation parameter approaches zero. This provides a comprehensive understanding of the optimization landscape explored by the RSA/SK iterations.
+
+\end{document}

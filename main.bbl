@@ -1,0 +1,50 @@
+\begin{thebibliography}{}
+
+\bibitem[Baradat and Ventre,
+  2023]{baradat2023convergencesinkhornalgorithmschrodinger}
+Baradat, A. and Ventre, E. (2023).
+\newblock Convergence of the sinkhorn algorithm when the schr\"odinger problem
+  has no solution.
+
+\bibitem[Frank and Goodman, 2012]{goodman}
+Frank, M. and Goodman, N. (2012).
+\newblock Predicting pragmatic reasoning in language games.
+\newblock {\em Science (New York, N.Y.)}, 336:998.
+
+\bibitem[Gushchin et~al.,
+  2023]{gushchin2023buildingbridgeschrodingercontinuous}
+Gushchin, N., Kolesov, A., Mokrov, P., Karpikova, P., Spiridonov, A., Burnaev,
+  E., and Korotin, A. (2023).
+\newblock Building the bridge of schr\"odinger: A continuous entropic optimal
+  transport benchmark.
+
+\bibitem[Idel, 2016]{idel2016reviewmatrixscalingsinkhorns}
+Idel, M. (2016).
+\newblock A review of matrix scaling and sinkhorn's normal form for matrices
+  and positive maps.
+
+\bibitem[Knopp and Sinkhorn, 1967]{pjm/1102992505}
+Knopp, P. and Sinkhorn, R. (1967).
+\newblock {Concerning nonnegative matrices and doubly stochastic matrices.}
+\newblock {\em Pacific Journal of Mathematics}, 21(2):343 -- 348.
+
+\bibitem[Krupp, 1979]{6770983}
+Krupp, R.~S. (1979).
+\newblock Properties of krulthof's projection method.
+\newblock {\em The Bell System Technical Journal}, 58(2):517--538.
+
+\bibitem[Léonard, 2013]{léonard2013surveyschrodingerproblemconnections}
+Léonard, C. (2013).
+\newblock A survey of the schr\"odinger problem and some of its connections
+  with optimal transport.
+
+\bibitem[Sinkhorn, 1967]{Sinkhorn1967DiagonalET}
+Sinkhorn, R. (1967).
+\newblock Diagonal equivalence to matrices with prescribed row and column sums.
+  ii.
+
+\bibitem[Wang et~al., 2020]{wang2020mathematicaltheorycooperativecommunication}
+Wang, P., Wang, J., Paranamana, P., and Shafto, P. (2020).
+\newblock A mathematical theory of cooperative communication.
+
+\end{thebibliography}

@@ -1,0 +1,9 @@
+\contentsline {section}{\numberline {1}Relevance of RSA iterations}{2}{section.1}%
+\contentsline {section}{\numberline {2}RSA algorithm is equivalent to Sinkhorn-Knopp method}{2}{section.2}%
+\contentsline {section}{\numberline {3}The Shrödinger problem}{3}{section.3}%
+\contentsline {section}{\numberline {4}Convergence of Sinkhorn algorithm}{4}{section.4}%
+\contentsline {section}{\numberline {5}Differences between RSA and Sinkhorn}{5}{section.5}%
+\contentsline {section}{\numberline {6}RSA as a Schrödinger problem}{5}{section.6}%
+\contentsline {section}{\numberline {7}Relaxed problem}{6}{section.7}%
+\contentsline {section}{References}{7}{section*.6}%
+\contentsline {section}{Appendix}{8}{section*.8}%
